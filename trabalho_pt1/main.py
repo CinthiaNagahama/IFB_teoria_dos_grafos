@@ -6,8 +6,8 @@ from graph import Graph, Edge
 def validate_args() -> Optional[str]:
     try:
         text_arg = sys.argv[1]
-    except IndexError as e:
-        print(e)
+    except IndexError:
+        print("Argumento de texto de entrada não encontrado!")
     else:
         return text_arg
 
@@ -33,3 +33,15 @@ if __name__ == "__main__":
 
         g_matrix.out_graph()
         g_list.out_graph()
+
+        # g_matrix.breadth_first_search("1")
+        # g_list.breadth_first_search("1")
+
+        # g_list.depth_first_search("1")
+        # g_matrix.depth_first_search("1")
+
+        print("Matriz: ")
+        print(g_matrix.find_connected_components())
+
+        print("Lista: ")
+        print(g_list.find_connected_components())
