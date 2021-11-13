@@ -12,47 +12,55 @@ class Edge(NamedTuple):
 
 
 class Graph:
-    def __init__(self, graph_type: Literal["matrix", "list"], vertices_num: int) -> None:
+    def __init__(self, graph_type: Literal["matriz", "lista"], vertices_num: int) -> None:
         self.graph_type = graph_type
         self.vertices_num = vertices_num
-        if self.graph_type == "matrix":
+
+        if self.graph_type == "matriz":
             self.__instance = _GraphMatrix(self.vertices_num)
-        elif self.graph_type == "list":
+            self.graph_type = "matrix"
+        elif self.graph_type == "lista":
             self.__instance = _GraphList(self.vertices_num)
+            self.graph_type = "list"
         else:
             raise ValueError("Tipo de grafo inválido!")
 
     def insert_relation(self, edge: Edge) -> None:
         self.__instance.insert_relation(edge)
 
-    def out_graph(self) -> None:
-        self.__instance.out_graph()
+    def get_graph_degrees(self) -> Dict[str, int]:
+        return self.__instance.get_graph_degrees()
 
-    def breadth_first_search(self, origin: str):
+    def out_graph(self, out_path: str) -> None:
+        self.__instance.out_graph(out_path)
+
+    def breadth_first_search(self, origin: str, out_path: str):
         vertices = self.__instance.breadth_first_search(origin)
 
         if vertices is None:
             raise ValueError(f"O argumento origem: {origin} não pertence ao grafo!")
 
-        self._search_out_graph(vertices, "largura")
+        self._search_out_graph(vertices, "largura", out_path)
 
-    def depth_first_search(self, origin: str):
+    def depth_first_search(self, origin: str, out_path: str):
         vertices = self.__instance.depth_first_search(origin)
 
         if vertices is None:
             raise ValueError(f"O argumento origem: {origin} não pertence ao grafo!")
 
-        self._search_out_graph(vertices, "profundidade")
+        self._search_out_graph(vertices, "profundidade", out_path)
 
-    def find_connected_components(self):
+    def find_connected_components(self) -> List[Set[str]]:
         return self.__instance.find_connected_components()
 
-    def _search_out_graph(self, vertices: Dict[str, Tuple[str, int]], search_type: Literal["largura", "profundidade"]):
+    def _search_out_graph(
+        self, vertices: Dict[str, Tuple[str, int]], search_type: Literal["largura", "profundidade"], out_path: str
+    ):
         translate_search_type = {"largura": "breadth", "profundidade": "depth"}
         max_len_number = m.floor(m.log10(self.vertices_num)) + 1
 
         with open(
-            path.join(path.curdir, f"graph_{self.graph_type}_{translate_search_type[search_type]}_search_out.txt"), "w"
+            path.join(out_path, f"graph_{self.graph_type}_{translate_search_type[search_type]}_search_out.txt"), "w"
         ) as file:
             for vertex, (parent, level) in vertices.items():
                 file.write(
@@ -128,17 +136,6 @@ class _GraphMatrix:
 
         return visited_vertices
 
-    def _search_out_graph(self, vertices: Dict[str, Tuple[str, int]], search_type: Literal["largura", "profundidade"]):
-        translate_search_type = {"largura": "breadth", "profundidade": "depth"}
-
-        with open(
-            path.join(path.curdir, f"graph_list_{translate_search_type[search_type]}_search_out.txt", "w")
-        ) as file:
-            for vertex, (parent, level) in vertices.items():
-                file.write(
-                    f"{vertex}: Nível = {level}" if parent == "" else f"{vertex}: Pai = {parent} | Nível = {level}"
-                )
-
     def find_connected_components(self) -> List[Set[str]]:
         connected_components: List[Set[str]] = list()
         component: List[str] = list()
@@ -172,8 +169,11 @@ class _GraphMatrix:
 
         return connected_components
 
-    def out_graph(self):
-        with open(path.join(path.curdir, "graph_matrix_out.txt"), "w") as file:
+    def get_graph_degrees(self) -> Dict[str, int]:
+        return {str(vertex + 1): np.count_nonzero(line) for vertex, line in enumerate(self.adj_matrix)}
+
+    def out_graph(self, out_path: str):
+        with open(path.join(out_path, "graph_matrix_out.txt"), "w") as file:
             file.write(f"# n = {len(self.vertices)}\n")
             file.write(f"# m = {int(np.count_nonzero(self.adj_matrix) / 2)}\n")
             for vertex, line in enumerate(self.adj_matrix):
@@ -190,8 +190,11 @@ class _GraphList:
         self[edge.src].add(edge.dest)
         self[edge.dest].add(edge.src)
 
-    def out_graph(self):
-        with open(path.join(path.curdir, "graph_list_out.txt"), "w") as file:
+    def get_graph_degrees(self) -> Dict[str, int]:
+        return {vertex: len(edges) for vertex, edges in self.elements.items()}
+
+    def out_graph(self, out_path: str):
+        with open(path.join(out_path, "graph_list_out.txt"), "w") as file:
             file.write(f"# n = {len(self.elements.keys())}\n")
             file.write(f"# m = {int(sum(len(edges) for edges in self.elements.values()) / 2)}\n")
 
@@ -286,15 +289,20 @@ if __name__ == "__main__":
         edges = text_file.readlines()
         edges = [Edge(*edge.strip().split()) for edge in edges]
 
-        g_matrix = Graph("matrix", vertices_num)
-        g_list = Graph("list", vertices_num)
+        g_matrix = Graph("matriz", vertices_num)
+        g_list = Graph("lista", vertices_num)
 
         for edge in edges:
             g_matrix.insert_relation(edge)
             g_list.insert_relation(edge)
 
-        g_matrix.out_graph()
-        g_list.out_graph()
+        out_path = path.join("..", "out")
 
-        g_matrix.breadth_first_search("1")
-        g_list.breadth_first_search("1")
+        g_matrix.out_graph(out_path)
+        g_list.out_graph(out_path)
+
+        # g_matrix.breadth_first_search("1", out_path)
+        # g_list.breadth_first_search("1", out_path)
+
+        # g_matrix.depth_first_search("1", out_path)
+        # g_list.depth_first_search("1", out_path)
