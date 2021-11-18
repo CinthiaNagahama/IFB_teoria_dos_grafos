@@ -1,9 +1,10 @@
 from itertools import filterfalse
 from os import path
-from typing import Dict, FrozenSet, List, Literal, NamedTuple, Optional, Set, Tuple
+from typing import Dict, FrozenSet, List, Literal, NamedTuple, Optional, Set, Tuple, Deque
 import numpy as np
 import math as m
 from functools import reduce
+from collections import deque
 
 
 class Edge(NamedTuple):
@@ -34,19 +35,22 @@ class Graph:
     def out_graph(self, out_path: str) -> None:
         self.__instance.out_graph(out_path)
 
-    def breadth_first_search(self, origin: str, out_path: str):
+    def breadth_first_search(self, origin: str, out_path: Optional[str] = None):
         vertices = self.__instance.breadth_first_search(origin)
 
         if vertices is None:
-            raise ValueError(f"O argumento origem: {origin} não pertence ao grafo!")
+            raise ValueError(
+                f"O argumento origem: {origin} não pertence ao grafo!")
 
-        self._search_out_graph(vertices, "largura", out_path)
+        if out_path is not None:
+            self._search_out_graph(vertices, "largura", out_path)
 
     def depth_first_search(self, origin: str, out_path: str):
         vertices = self.__instance.depth_first_search(origin)
 
         if vertices is None:
-            raise ValueError(f"O argumento origem: {origin} não pertence ao grafo!")
+            raise ValueError(
+                f"O argumento origem: {origin} não pertence ao grafo!")
 
         self._search_out_graph(vertices, "profundidade", out_path)
 
@@ -60,7 +64,8 @@ class Graph:
         max_len_number = m.floor(m.log10(self.vertices_num)) + 1
 
         with open(
-            path.join(out_path, f"graph_{self.graph_type}_{translate_search_type[search_type]}_search_out.txt"), "w"
+            path.join(
+                out_path, f"graph_{self.graph_type}_{translate_search_type[search_type]}_search_out.txt"), "w"
         ) as file:
             for vertex, (parent, level) in vertices.items():
                 file.write(
@@ -73,21 +78,23 @@ class Graph:
 class _GraphMatrix:
     def __init__(self, vertices_num: int) -> None:
         self.vertices = [str(v + 1) for v in range(vertices_num)]
-        self.adj_matrix = np.zeros((vertices_num, vertices_num), dtype=int)
+        self.adj_matrix = np.zeros((vertices_num, vertices_num), dtype="bool")
 
     def _get_vertex_index(self, vertex: str) -> int:
         return self.vertices.index(vertex)
 
     def insert_relation(self, edge: Edge):
-        self.adj_matrix[self._get_vertex_index(edge.src)][self._get_vertex_index(edge.dest)] = 1
-        self.adj_matrix[self._get_vertex_index(edge.dest)][self._get_vertex_index(edge.src)] = 1
+        self.adj_matrix[self._get_vertex_index(
+            edge.src)][self._get_vertex_index(edge.dest)] = 1
+        self.adj_matrix[self._get_vertex_index(
+            edge.dest)][self._get_vertex_index(edge.src)] = 1
 
     def breadth_first_search(self, origin: str) -> Optional[Dict[str, Tuple[str, int]]]:
         if origin not in self.vertices:
             return None
 
         # [current, parent, level]
-        vertices_queue: List[Tuple[str, str, int]] = []
+        vertices_queue: Deque[Tuple[str, str, int]] = deque()
         # {current: (parent, level)}
         visited_vertices: Dict[str, Tuple[str, int]] = dict()
 
@@ -95,13 +102,14 @@ class _GraphMatrix:
 
         vertices_queue.append((origin, "", 0))
 
-        while len(vertices_queue) != 0:
-            (current, parent, level) = vertices_queue.pop(0)
+        while len(vertices_queue) > 0:
+            (current, parent, level) = vertices_queue.popleft()
             to_be_visited_vertices.discard(current)
 
             visited_vertices[current] = (parent, level)
 
-            (indexes,) = np.nonzero(self.adj_matrix[self._get_vertex_index(current)])
+            (indexes,) = np.nonzero(
+                self.adj_matrix[self._get_vertex_index(current)])
             for idx in indexes:
                 vertex = str(idx + 1)
                 if vertex not in visited_vertices and vertex not in to_be_visited_vertices:
@@ -115,7 +123,7 @@ class _GraphMatrix:
             return None
 
         # [current, parent, level]
-        vertices_stack: List[Tuple[str, str, int]] = []
+        vertices_stack: Deque[Tuple[str, str, int]] = deque()
         # {current: (parent, level)}
         visited_vertices: Dict[str, Tuple[str, int]] = dict()
         to_be_visited_vertices: Set[str] = set()
@@ -127,7 +135,8 @@ class _GraphMatrix:
             visited_vertices[current] = (parent, level)
             to_be_visited_vertices.discard(current)
 
-            (indexes,) = np.nonzero(self.adj_matrix[self._get_vertex_index(current)])
+            (indexes,) = np.nonzero(
+                self.adj_matrix[self._get_vertex_index(current)])
             for idx in indexes:
                 vertex = str(idx + 1)
                 if vertex not in visited_vertices and vertex not in to_be_visited_vertices:
@@ -140,7 +149,7 @@ class _GraphMatrix:
         connected_components: List[Set[str]] = list()
         component: List[str] = list()
 
-        vertices_queue: List[str] = []
+        vertices_queue: Deque[str] = deque()
 
         to_be_visited_vertices: Set[str] = set()
         visited_vertices: Set[str] = set()
@@ -151,14 +160,15 @@ class _GraphMatrix:
                 component = list()
 
                 while len(vertices_queue) != 0:
-                    current = vertices_queue.pop(0)
+                    current = vertices_queue.popleft()
 
                     component.append(current)
 
                     to_be_visited_vertices.discard(current)
                     visited_vertices.add(current)
 
-                    (indexes,) = np.nonzero(self.adj_matrix[self._get_vertex_index(current)])
+                    (indexes,) = np.nonzero(
+                        self.adj_matrix[self._get_vertex_index(current)])
                     for idx in indexes:
                         vertex = str(idx + 1)
                         if vertex not in visited_vertices and vertex not in to_be_visited_vertices:
@@ -196,7 +206,8 @@ class _GraphList:
     def out_graph(self, out_path: str):
         with open(path.join(out_path, "graph_list_out.txt"), "w") as file:
             file.write(f"# n = {len(self.elements.keys())}\n")
-            file.write(f"# m = {int(sum(len(edges) for edges in self.elements.values()) / 2)}\n")
+            file.write(
+                f"# m = {int(sum(len(edges) for edges in self.elements.values()) / 2)}\n")
 
             for vertex, edges in self.elements.items():
                 file.write(f"{vertex} {len(edges)}\n")
@@ -206,7 +217,8 @@ class _GraphList:
             return None
 
         # [current, parent, level]
-        vertices_queue: List[Tuple[str, str, int]] = []
+        # vertices_queue: List[Tuple[str, str, int]] = []
+        vertices_queue: Deque[Tuple[str, str, int]] = deque()
         # {current: (parent, level)}
         visited_vertices: Dict[str, Tuple[str, int]] = dict()
 
@@ -215,7 +227,7 @@ class _GraphList:
         vertices_queue.append((origin, "", 0))
 
         while len(vertices_queue) != 0:
-            current, parent, level = vertices_queue.pop(0)
+            current, parent, level = vertices_queue.popleft()
             visited_vertices[current] = parent, level
             to_be_visited_vertices.discard(current)
 
@@ -231,7 +243,7 @@ class _GraphList:
             return None
 
         # [current, parent, level]
-        vertices_stack: List[Tuple[str, str, int]] = []
+        vertices_stack: Deque[Tuple[str, str, int]] = deque()
         # {current: (parent, level)}
         visited_vertices: Dict[str, Tuple[str, int]] = dict()
 
@@ -262,8 +274,10 @@ class _GraphList:
             acc_component = components.pop()
 
             while True:
-                acc_component, merged = reduce(self._reduce_components, components, (acc_component, False))
-                components = set(filterfalse(lambda component: component.issubset(acc_component), components))
+                acc_component, merged = reduce(
+                    self._reduce_components, components, (acc_component, False))
+                components = set(filterfalse(
+                    lambda component: component.issubset(acc_component), components))
                 if not merged:
                     break
 
