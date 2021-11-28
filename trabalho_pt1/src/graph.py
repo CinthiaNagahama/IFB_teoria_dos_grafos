@@ -139,17 +139,15 @@ class _GraphMatrix:
 
     def find_connected_components(self) -> List[Set[str]]:
         connected_components: List[Set[str]] = list()
-        component: List[str] = list()
-
-        vertices_queue: Deque[str] = deque()
-
-        to_be_visited_vertices: Set[str] = set()
         visited_vertices: Set[str] = set()
 
         for vertex in self.vertices:
             if vertex not in visited_vertices:
+                vertices_queue: Deque[str] = deque()
+                to_be_visited_vertices: Set[str] = set()
+                component: List[str] = list()
+
                 vertices_queue.append(vertex)
-                component = list()
 
                 while len(vertices_queue) != 0:
                     current = vertices_queue.popleft()
@@ -209,7 +207,6 @@ class _GraphList:
             return None
 
         # [current, parent, level]
-        # vertices_queue: List[Tuple[str, str, int]] = []
         vertices_queue: Deque[Tuple[str, str, int]] = deque()
         # {current: (parent, level)}
         visited_vertices: Dict[str, Tuple[str, int]] = dict()
