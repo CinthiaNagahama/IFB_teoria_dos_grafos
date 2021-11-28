@@ -39,12 +39,11 @@ if __name__ == "__main__":
     print(f"O menor grau do grafo é {min(graph_degrees.values())}")
 
     plt.plot(list(graph_degrees.values()))
-    plt.fill_between(range(len(graph_degrees.values())),
-                     list(graph_degrees.values()), alpha=0.5)
     plt.axhline(y=greatest_degree, color="r")
     plt.legend(["Graus", "Grau máximo"])
     plt.xlabel("Vértices")
     plt.ylabel("Graus")
+    plt.yscale("log")
     plt.title("Comparação de Graus")
     plt.grid(True)
     plt.show()
