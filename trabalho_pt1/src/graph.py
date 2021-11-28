@@ -1,9 +1,7 @@
-from itertools import filterfalse
 from os import path
-from typing import Dict, FrozenSet, List, Literal, NamedTuple, Optional, Set, Tuple, Deque
+from typing import Dict, List, Literal, NamedTuple, Optional, Set, Tuple, Deque
 import numpy as np
 import math as m
-from functools import reduce
 from collections import deque
 
 
@@ -45,14 +43,15 @@ class Graph:
         if out_path is not None:
             self._search_out_graph(vertices, "largura", out_path)
 
-    def depth_first_search(self, origin: str, out_path: str):
+    def depth_first_search(self, origin: str, out_path: Optional[str] = None):
         vertices = self.__instance.depth_first_search(origin)
 
         if vertices is None:
             raise ValueError(
                 f"O argumento origem: {origin} não pertence ao grafo!")
 
-        self._search_out_graph(vertices, "profundidade", out_path)
+        if out_path is not None:
+            self._search_out_graph(vertices, "profundidade", out_path)
 
     def find_connected_components(self) -> List[Set[str]]:
         return self.__instance.find_connected_components()
@@ -77,17 +76,12 @@ class Graph:
 
 class _GraphMatrix:
     def __init__(self, vertices_num: int) -> None:
-        self.vertices = [str(v + 1) for v in range(vertices_num)]
+        self.vertices = {str(v + 1): v for v in range(vertices_num)}
         self.adj_matrix = np.zeros((vertices_num, vertices_num), dtype="bool")
 
-    def _get_vertex_index(self, vertex: str) -> int:
-        return self.vertices.index(vertex)
-
     def insert_relation(self, edge: Edge):
-        self.adj_matrix[self._get_vertex_index(
-            edge.src)][self._get_vertex_index(edge.dest)] = 1
-        self.adj_matrix[self._get_vertex_index(
-            edge.dest)][self._get_vertex_index(edge.src)] = 1
+        self.adj_matrix[self.vertices[edge.src]][self.vertices[edge.dest]] = 1
+        self.adj_matrix[self.vertices[edge.dest]][self.vertices[edge.src]] = 1
 
     def breadth_first_search(self, origin: str) -> Optional[Dict[str, Tuple[str, int]]]:
         if origin not in self.vertices:
@@ -108,8 +102,7 @@ class _GraphMatrix:
 
             visited_vertices[current] = (parent, level)
 
-            (indexes,) = np.nonzero(
-                self.adj_matrix[self._get_vertex_index(current)])
+            (indexes,) = np.nonzero(self.adj_matrix[self.vertices[current]])
             for idx in indexes:
                 vertex = str(idx + 1)
                 if vertex not in visited_vertices and vertex not in to_be_visited_vertices:
@@ -135,8 +128,7 @@ class _GraphMatrix:
             visited_vertices[current] = (parent, level)
             to_be_visited_vertices.discard(current)
 
-            (indexes,) = np.nonzero(
-                self.adj_matrix[self._get_vertex_index(current)])
+            (indexes,) = np.nonzero(self.adj_matrix[self.vertices[current]])
             for idx in indexes:
                 vertex = str(idx + 1)
                 if vertex not in visited_vertices and vertex not in to_be_visited_vertices:
@@ -168,7 +160,7 @@ class _GraphMatrix:
                     visited_vertices.add(current)
 
                     (indexes,) = np.nonzero(
-                        self.adj_matrix[self._get_vertex_index(current)])
+                        self.adj_matrix[self.vertices[current]])
                     for idx in indexes:
                         vertex = str(idx + 1)
                         if vertex not in visited_vertices and vertex not in to_be_visited_vertices:
@@ -264,37 +256,34 @@ class _GraphList:
         return visited_vertices
 
     def find_connected_components(self) -> List[Set[str]]:
-        components: Set[FrozenSet[str]] = set()
         connected_components: List[Set[str]] = list()
+        visited_vertices: Set[str] = set()
 
         for vertex in self.elements:
-            components.add(frozenset({vertex, *self[vertex]}))
+            if vertex in visited_vertices:
+                continue
 
-        while len(components) > 0:
-            acc_component = components.pop()
+            to_be_visited_vertices: Set[str] = set()
+            vertices_stack: Deque[str] = deque()
+            local_component: Set[str] = set()
 
-            while True:
-                acc_component, merged = reduce(
-                    self._reduce_components, components, (acc_component, False))
-                components = set(filterfalse(
-                    lambda component: component.issubset(acc_component), components))
-                if not merged:
-                    break
+            vertices_stack.append(vertex)
 
-            connected_components.append(set(acc_component))
+            while len(vertices_stack) != 0:
+                current_vertex = vertices_stack.pop()
+
+                visited_vertices.add(current_vertex)
+                local_component.add(current_vertex)
+                to_be_visited_vertices.discard(current_vertex)
+
+                for edge in self[current_vertex]:
+                    if edge not in visited_vertices and edge not in to_be_visited_vertices:
+                        vertices_stack.append(edge)
+                        to_be_visited_vertices.add(edge)
+
+            connected_components.append(local_component)
 
         return connected_components
-
-    @staticmethod
-    def _reduce_components(acc: Tuple[Set[str], bool], component: Set[str]):
-        acc_component, merged = acc
-        if acc_component.isdisjoint(component):
-            return acc_component, merged
-        else:
-            return acc_component.union(component), True
-
-    def __getitem__(self, key):
-        return self.elements[key]
 
 
 if __name__ == "__main__":
